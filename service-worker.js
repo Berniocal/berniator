@@ -1,5 +1,5 @@
 /* Berniátor SW – jednoduché precache + offline fallbacks */
-const VERSION = 'v4.0';
+const VERSION = 'v5.0';
 const CORE = [
   './',
   './index.html',
