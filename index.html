@@ -23,6 +23,8 @@
     min-height:100dvh;display:flex;flex-direction:column;gap:12px;
     padding:12px;padding-top:env(safe-area-inset-top);
     padding-bottom:calc(env(safe-area-inset-bottom) + 12px);
+    max-width: 820px;
+    margin: 0 auto;
   }
   h1{font-size:18px;margin:2px 0 0 0;text-align:center}
   .hint{margin:0;color:var(--muted);font-size:.9rem;text-align:center}
@@ -77,17 +79,19 @@
   }
   .chip.active{background:#1e344f;color:#cfe6ff;border-color:#335d91}
 
-  /* ===== Knob ===== */
+  /* ===== Knob (mobil default) ===== */
   .knob{
     border-radius:18px;
     background:#0b1220;
     border:1px solid #1f334a;
     position:relative;
-    min-height:220px;
+    min-height:220px;         /* mobil */
     aspect-ratio:1/1;
     touch-action:none;
     overflow:hidden;
     display:flex;align-items:center;justify-content:center;
+    margin: 0 auto;
+    width: min(420px, 100%);
   }
   .knob, .knob *{
     -webkit-user-select:none; user-select:none;
@@ -146,6 +150,7 @@
     outline:none;
   }
 
+  /* Play/Stop doprostřed */
   .playRow{
     margin-top:12px;
     display:flex;
@@ -154,6 +159,24 @@
   #btnPlayStop{ width:min(360px, 100%); }
 
   .footer-note{font-size:.85rem;color:var(--muted);text-align:center;margin-top:8px}
+
+  /* ===== PC: zmenšit knob a text, ale telefon nechat ===== */
+  @media (min-width: 760px){
+    .knob{
+      min-height:160px;
+      width: 320px;
+    }
+    .knobCenterBtn{
+      font-size: 30px;
+      padding: 8px 12px;
+    }
+    #btnPlayStop{
+      width: 300px;
+    }
+    .pad-wrap #pad{
+      height: 360px;
+    }
+  }
 </style>
 </head>
 
@@ -326,7 +349,7 @@
     }
     rebuildLastWaveTable();
     requestDraw();
-    sendTableToAudio(); // ✅ teď funguje i za běhu
+    sendTableToAudio();
     document.querySelectorAll('#presets .chip[data-preset]').forEach(c=>c.classList.remove('active'));
     document.querySelector(`#presets .chip[data-preset="${name}"]`)?.classList.add('active');
   }
@@ -373,7 +396,7 @@
     if(!drawing) return;
     drawing=false;
     rebuildLastWaveTable();
-    sendTableToAudio(); // ✅ teď se propíše i do fallback oscilátoru
+    sendTableToAudio();
   }
   pad.addEventListener('touchstart', e=>{ e.preventDefault(); pointerDown(e); }, {passive:false});
   pad.addEventListener('touchmove',  e=>{ e.preventDefault(); pointerMove(e); }, {passive:false});
@@ -436,6 +459,7 @@
   // ===== Toggle kreslení =====
   const btnDraw=document.getElementById('btnDraw');
   const btnErase=document.getElementById('btnErase');
+
   function setTool(t){
     tool = t;
     btnDraw.classList.toggle('active', tool==='draw');
@@ -454,7 +478,6 @@
     sendTableToAudio();
   };
   document.getElementById('btnNormalize').onclick=()=>{
-    // normalizace na hlavní tabulce (užitečné i pro kreslení)
     normalize_inplace(table);
     rebuildLastWaveTable();
     requestDraw();
@@ -679,7 +702,7 @@ registerProcessor('wave-player', WavePlayer);
       node.connect(ctxAudio.destination);
       usingWorklet = true;
 
-      sendTableToAudio(); // ✅ po vytvoření hned pošle aktuální vlnu
+      sendTableToAudio();
       return;
     }catch(_){
       usingWorklet = false;
@@ -695,7 +718,6 @@ registerProcessor('wave-player', WavePlayer);
     osc.connect(gain);
     osc.start();
 
-    // nastav poslední vlnu (PeriodicWave)
     sendTableToAudio();
   }
 
@@ -710,7 +732,6 @@ registerProcessor('wave-player', WavePlayer);
   }
 
   function buildPeriodicWaveFromTable(tmp){
-    // Fourier aproximace (prvních 64 harmonických)
     const N = tmp.length, K = 64;
     const real = new Float32Array(K+1);
     const imag = new Float32Array(K+1);
@@ -743,9 +764,7 @@ registerProcessor('wave-player', WavePlayer);
       try{
         const pw = buildPeriodicWaveFromTable(tmp);
         osc.setPeriodicWave(pw);
-      }catch(_){
-        // pokud by PeriodicWave selhalo, nic – aspoň to hraje
-      }
+      }catch(_){}
     }
   }
 
@@ -770,7 +789,7 @@ registerProcessor('wave-player', WavePlayer);
       await ensureAudio();
       if(ctxAudio.state!=='running') await ctxAudio.resume();
       setFrequencyParam(freqExact);
-      sendTableToAudio(); // ✅ jistota: při startu vždy nastav aktuální vlnu
+      sendTableToAudio();
       setPlayUI(true);
     }else{
       if(ctxAudio) await ctxAudio.suspend();
