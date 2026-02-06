@@ -150,6 +150,28 @@
     outline:none;
   }
 
+  /* ===== In-app volume UI ===== */
+  .volBox{
+    margin: 10px auto 0 auto;
+    width: min(420px, 100%);
+    background:#0b1220;
+    border:1px solid #1f334a;
+    border-radius:14px;
+    padding:10px 12px;
+  }
+  .volTop{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:10px;
+    margin-bottom:8px;
+  }
+  .volTitle{font-weight:800}
+  .volVal{color:var(--text);font-weight:900}
+  .volHint{color:var(--muted);font-size:.85rem;margin-top:6px}
+  input[type="range"]{
+    width:100%;
+    accent-color: var(--accent);
+  }
+
   /* Play/Stop doprostřed */
   .playRow{
     margin-top:12px;
@@ -175,6 +197,9 @@
     }
     .pad-wrap #pad{
       height: 360px;
+    }
+    .volBox{
+      width: 320px;
     }
   }
 </style>
@@ -236,6 +261,16 @@
       <div class="knobHint">Táhni po obvodu</div>
     </div>
 
+    <!-- In-app volume (system volume nejde číst) -->
+    <div class="volBox" aria-label="Hlasitost v aplikaci">
+      <div class="volTop">
+        <div class="volTitle">Hlasitost v aplikaci</div>
+        <div class="volVal"><span id="volPct">35</span>%</div>
+      </div>
+      <input id="volRange" type="range" min="0" max="100" step="1" value="35" />
+      <div class="volHint">Pozn.: Systémovou hlasitost médií nejde z webu přečíst. Bočními tlačítky ovládáš systém, posuvníkem jen tuto appku.</div>
+    </div>
+
     <div class="playRow">
       <button id="btnPlayStop" class="ok">▶️ Přehrát</button>
     </div>
@@ -264,17 +299,18 @@
   const TRAIL_DOTS = 26;
 
   let table = new Float32Array(TABLE_SIZE);
-  let lastWaveTable = null; // Float32Array normalizovaná, bez DC
+  let lastWaveTable = null;
 
-  let tool = null; // 'draw' | 'erase' | null
+  let tool = null;
   let needRedraw = true;
 
   // audio
   let ctxAudio = null, node = null, usingWorklet = false;
   let osc = null, gain = null;
+  let masterGain = null; // ✅ společný gain pro Worklet i fallback
   let playing = false;
 
-  // frekvence (interně float)
+  // frekvence
   let freqExact = 440;
 
   // knob
@@ -294,6 +330,37 @@
   const knobCenterBtn = document.getElementById('knobCenterBtn');
   const knobEdit = document.getElementById('knobEdit');
   const knobInput = document.getElementById('knobInput');
+
+  // volume UI
+  const volRange = document.getElementById('volRange');
+  const volPct   = document.getElementById('volPct');
+
+  // ===== Volume state =====
+  const VOL_KEY = 'berniator_volume_percent';
+  let vol = (() => {
+    const s = localStorage.getItem(VOL_KEY);
+    const v = s==null ? 35 : parseInt(s,10);
+    return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 35;
+  })();
+
+  function setVolUI(p){
+    vol = Math.max(0, Math.min(100, Math.round(p)));
+    volRange.value = String(vol);
+    volPct.textContent = String(vol);
+    localStorage.setItem(VOL_KEY, String(vol));
+    applyMasterGain();
+  }
+  function applyMasterGain(){
+    const g = (vol/100);
+    if(ctxAudio && masterGain){
+      masterGain.gain.setValueAtTime(g, ctxAudio.currentTime);
+    } else if(gain) {
+      // fallback starší proměnná, kdyby náhodou
+      gain.gain.value = g;
+    }
+  }
+  setVolUI(vol);
+  volRange.addEventListener('input', () => setVolUI(parseInt(volRange.value,10)));
 
   // ===== Canvas =====
   const pad = document.getElementById('pad');
@@ -331,7 +398,6 @@
       for(let i=0;i<arr.length;i++) arr[i]*=k;
     }
   }
-
   function rebuildLastWaveTable(){
     const tmp = new Float32Array(table);
     removeDC_inplace(tmp);
@@ -559,7 +625,7 @@
     const r = svg.getBoundingClientRect();
     const x = (clientX - r.left) / r.width * 100;
     const y = (clientY - r.top)  / r.height * 100;
-    return Math.atan2(y - CY, x - CX);
+    return Math.atan2(y - 50, x - 50);
   }
   function hitRing(clientX, clientY){
     const r = svg.getBoundingClientRect();
@@ -654,6 +720,11 @@
     if(ctxAudio) return;
     ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
 
+    // společný master gain
+    masterGain = ctxAudio.createGain();
+    masterGain.gain.value = vol/100;
+    masterGain.connect(ctxAudio.destination);
+
     // zkus Worklet
     try{
       const code = `
@@ -699,10 +770,11 @@ registerProcessor('wave-player', WavePlayer);
         numberOfInputs:0, numberOfOutputs:1, outputChannelCount:[1],
         parameterData:{frequency:freqExact}
       });
-      node.connect(ctxAudio.destination);
+      node.connect(masterGain);
       usingWorklet = true;
 
       sendTableToAudio();
+      applyMasterGain();
       return;
     }catch(_){
       usingWorklet = false;
@@ -710,8 +782,8 @@ registerProcessor('wave-player', WavePlayer);
 
     // fallback: Oscillator + PeriodicWave
     gain = ctxAudio.createGain();
-    gain.gain.value = 0.35;
-    gain.connect(ctxAudio.destination);
+    gain.gain.value = 1; // masterGain řeší hlasitost
+    gain.connect(masterGain);
 
     osc = ctxAudio.createOscillator();
     osc.frequency.value = freqExact;
@@ -719,6 +791,7 @@ registerProcessor('wave-player', WavePlayer);
     osc.start();
 
     sendTableToAudio();
+    applyMasterGain();
   }
 
   function setFrequencyParam(f){
@@ -758,8 +831,6 @@ registerProcessor('wave-player', WavePlayer);
       node.port.postMessage({type:'setTable', table: tmp});
       return;
     }
-
-    // fallback
     if(osc && ctxAudio){
       try{
         const pw = buildPeriodicWaveFromTable(tmp);
@@ -790,6 +861,7 @@ registerProcessor('wave-player', WavePlayer);
       if(ctxAudio.state!=='running') await ctxAudio.resume();
       setFrequencyParam(freqExact);
       sendTableToAudio();
+      applyMasterGain();
       setPlayUI(true);
     }else{
       if(ctxAudio) await ctxAudio.suspend();
