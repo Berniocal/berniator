@@ -27,19 +27,43 @@
   h1{font-size:18px;margin:2px 0 0 0;text-align:center}
   .hint{margin:0;color:var(--muted);font-size:.9rem;text-align:center}
 
-  .pad-wrap{
-    position:relative;flex:1 1 auto;border-radius:16px;overflow:hidden;
-    background:#0b1220;box-shadow:0 8px 28px rgba(0,0,0,.35);
+  .panel{
+    background:var(--panel);border-radius:16px;padding:12px;
+    box-shadow:0 8px 28px rgba(0,0,0,.35)
   }
-  .pad-wrap #pad{width:100%;height:58vh;display:block;touch-action:none}
 
-  .panel{background:var(--panel);border-radius:16px;padding:12px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
-  .toolbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  /* ===== Collapsible controls ===== */
+  details.controls > summary{
+    list-style:none;
+    cursor:pointer;
+    user-select:none;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;
+    padding:12px 14px;
+    border-radius:14px;
+    background:#0b1220;
+    border:1px solid #1f334a;
+    color:var(--text);
+    font-weight:800;
+  }
+  details.controls > summary::-webkit-details-marker{display:none;}
+  .chev{opacity:.85;font-weight:900;transition:transform .18s ease}
+  details.controls[open] > summary .chev{transform:rotate(180deg)}
+  .controlsBody{margin-top:10px}
+
+  .pad-wrap{
+    position:relative;border-radius:16px;overflow:hidden;
+    background:#0b1220;border:1px solid #1f334a;
+    box-shadow:0 8px 28px rgba(0,0,0,.25);
+  }
+  .pad-wrap #pad{width:100%;height:42vh;display:block;touch-action:none}
+
+  .toolbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   @media (min-width:740px){ .toolbar{grid-template-columns:repeat(6,1fr)} }
 
   button{
     appearance:none;border:0;border-radius:14px;background:#152236;color:var(--text);
-    padding:14px 12px;font-weight:600;font-size:16px;min-height:48px;
+    padding:14px 12px;font-weight:700;font-size:16px;min-height:48px;
     box-shadow:0 2px 0 rgba(0,0,0,.35);
   }
   button:active{transform:translateY(1px)}
@@ -53,23 +77,13 @@
   }
   .chip.active{background:#1e344f;color:#cfe6ff;border-color:#335d91}
 
-  label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
-  input[type="number"]{
-    width:100%;padding:12px;border-radius:12px;border:1px solid #1f334a;
-    background:#0b1220;color:var(--text);font-size:16px;
-  }
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .footer-note{font-size:.85rem;color:var(--muted);text-align:center;margin-top:8px}
-
-  .knobRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;margin-top:8px}
-  @media (max-width: 420px){ .knobRow{grid-template-columns:1fr} }
-
+  /* ===== Knob ===== */
   .knob{
     border-radius:18px;
     background:#0b1220;
     border:1px solid #1f334a;
     position:relative;
-    min-height:155px;
+    min-height:220px;
     aspect-ratio:1/1;
     touch-action:none;
     overflow:hidden;
@@ -83,22 +97,63 @@
     position:absolute; inset:0; width:100%; height:100%;
     z-index:1;
   }
-  .knobCenter{
+
+  .knobCenterBtn{
     position:relative;
-    z-index:2;
+    z-index:3;
+    display:inline-flex;
+    align-items:baseline;
+    gap:8px;
+    padding:10px 14px;
+    border-radius:999px;
+    background:rgba(11,18,32,.35);
+    border:1px solid rgba(31,51,74,.6);
+    backdrop-filter: blur(3px);
     font-weight:900;
-    font-size: clamp(22px, 5.8vw, 34px);
+    font-size: clamp(24px, 6.2vw, 40px);
     letter-spacing:.2px;
     white-space:nowrap;
-    pointer-events:none;
-    text-align:center;
+    cursor:pointer;
   }
+  .knobCenterBtn:active{transform:translateY(1px)}
   .knobHint{
     position:absolute; bottom:10px; left:12px;
     z-index:2;
-    font-size:.8rem;color:var(--muted);
+    font-size:1rem;color:var(--muted);
     pointer-events:none;
   }
+
+  .knobEdit{
+    position:absolute;
+    z-index:4;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,.18);
+  }
+  .knobEdit.show{display:flex}
+  .knobEdit input{
+    width:min(260px, 72%);
+    text-align:center;
+    padding:12px 14px;
+    border-radius:14px;
+    border:1px solid #335d91;
+    background:#0b1220;
+    color:var(--text);
+    font-size:20px;
+    font-weight:800;
+    outline:none;
+  }
+
+  .playRow{
+    margin-top:12px;
+    display:flex;
+    justify-content:center;
+  }
+  #btnPlayStop{ width:min(360px, 100%); }
+
+  .footer-note{font-size:.85rem;color:var(--muted);text-align:center;margin-top:8px}
 </style>
 </head>
 
@@ -106,55 +161,60 @@
 <div class="app">
   <div>
     <h1>Nakresli 1 periodu → přehraj 🎧</h1>
-    <p class="hint">
-      Výchozí je <b>sinus</b>. Kreslení je vypnuté.
-      Knob je <b>nekonečný</b> a thumb jde pod prstem.
-    </p>
+    <p class="hint">Graf a ovládání jsou v roletě nahoře. Frekvenci měníš knoflíkem nebo klepnutím na číslo uprostřed.</p>
   </div>
 
-  <div class="pad-wrap">
-    <canvas id="pad"></canvas>
-  </div>
+  <details class="controls" id="controls">
+    <summary>
+      <span>⚙️ Ovládání periody</span>
+      <span class="chev">▾</span>
+    </summary>
+
+    <div class="controlsBody">
+      <div class="pad-wrap" style="margin-bottom:10px">
+        <canvas id="pad"></canvas>
+      </div>
+
+      <div class="toolbar" role="toolbar" aria-label="Kreslení">
+        <button id="btnDraw" class="chip" aria-pressed="false">✏️ Kreslit</button>
+        <button id="btnErase" class="chip" aria-pressed="false">🩹 Vyhladit</button>
+        <button id="btnClear" class="chip">🗑️ Vymazat</button>
+        <button id="btnNormalize" class="chip">↔️ Normalizovat</button>
+        <button id="btnCenter" class="chip">⚖️ Bez DC</button>
+        <button id="btnInvert" class="chip">⇅ Invertovat</button>
+      </div>
+
+      <div class="chipbar" id="presets" role="group" aria-label="Předvolby">
+        <div class="chip active" data-preset="sine">Sinus</div>
+        <div class="chip" data-preset="square">Čtverec</div>
+        <div class="chip" data-preset="saw">Pila</div>
+        <div class="chip" data-preset="triangle">Trojúhelník</div>
+        <div class="chip" id="btnHalfRect">Půlvlnný usměrněný</div>
+      </div>
+    </div>
+  </details>
 
   <div class="panel">
+    <div id="knob" class="knob" aria-label="Nekonečný potenciometr frekvence">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="38" fill="none" stroke="var(--ring)" stroke-width="10" opacity="0.9" />
+        <g id="trail"></g>
+        <circle id="thumb" cx="50" cy="12" r="5.2" fill="#cfe6ff" opacity="0.95"></circle>
+      </svg>
 
-    <div class="toolbar">
-      <button id="btnDraw" class="chip" aria-pressed="false">✏️ Kreslit</button>
-      <button id="btnErase" class="chip" aria-pressed="false">🩹 Vyhladit</button>
-      <button id="btnClear" class="chip">🗑️ Vymazat</button>
-      <button id="btnNormalize" class="chip">↔️ Normalizovat</button>
-      <button id="btnCenter" class="chip">⚖️ Bez DC</button>
-      <button id="btnInvert" class="chip">⇅ Invertovat</button>
-    </div>
-
-    <div class="chipbar" id="presets">
-      <div class="chip active" data-preset="sine">Sinus</div>
-      <div class="chip" data-preset="square">Čtverec</div>
-      <div class="chip" data-preset="saw">Pila</div>
-      <div class="chip" data-preset="triangle">Trojúhelník</div>
-      <div class="chip" id="btnHalfRect">Půlvlnný usměrněný</div>
-    </div>
-
-    <div class="knobRow">
-      <div>
-        <label for="freq">Frekvence (Hz)</label>
-        <input id="freq" type="number" min="10" max="5000" step="1" value="440" inputmode="numeric">
+      <div id="knobCenterBtn" class="knobCenterBtn" role="button" aria-label="Upravit frekvenci">
+        <span id="knobHz">440</span><span style="opacity:.9;font-size:.55em">Hz</span>
       </div>
 
-      <div id="knob" class="knob">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <circle cx="50" cy="50" r="38" fill="none" stroke="var(--ring)" stroke-width="10" opacity="0.9" />
-          <g id="trail"></g>
-          <circle id="thumb" cx="50" cy="12" r="5.2" fill="#cfe6ff" opacity="0.95"></circle>
-        </svg>
-        <div class="knobCenter" id="knobCenter">440 Hz</div>
-        <div class="knobHint">Táhni po obvodu</div>
+      <div id="knobEdit" class="knobEdit" aria-hidden="true">
+        <input id="knobInput" type="number" inputmode="numeric" min="10" max="5000" step="1" value="440" />
       </div>
+
+      <div class="knobHint">Táhni po obvodu</div>
     </div>
 
-    <div class="two" style="margin-top:8px">
-      <button id="btnPlay" class="ok">▶️ Přehrát</button>
-      <button id="btnStop" class="danger">⏹️ Stop</button>
+    <div class="playRow">
+      <button id="btnPlayStop" class="ok">▶️ Přehrát</button>
     </div>
 
     <p class="footer-note">Berniátor • offline</p>
@@ -168,15 +228,9 @@
 
   const F_MIN = 10, F_MAX = 5000;
 
-  // Nekonečný knob – rychlost (1 otočka = *X)
   const ONE_TURN_MULT = 3;
-
-  // Jemné ladění pro nízké frekvence (přičítání místo násobení)
-  // Hodnota je "Hz na 1 radián" při velmi nízkých frekvencích
-  const LOW_ADD_PER_RAD = 6.0; // zvýš = citlivější dole
-
-  // Kde se přechází z "add" na "mul"
-  const LOW_BLEND_HZ = 120; // do ~120 Hz bude přičítání výraznější
+  const LOW_ADD_PER_RAD = 6.0;
+  const LOW_BLEND_HZ = 120;
 
   // SVG ring
   const CX=50, CY=50, R=38;
@@ -187,28 +241,45 @@
   const TRAIL_DOTS = 26;
 
   let table = new Float32Array(TABLE_SIZE);
-  let tool = null;
+  let lastWaveTable = null; // Float32Array normalizovaná, bez DC
+
+  let tool = null; // 'draw' | 'erase' | null
   let needRedraw = true;
 
   // audio
-  let ctxAudio = null, node = null, usingWorklet = false, osc = null, gain = null;
+  let ctxAudio = null, node = null, usingWorklet = false;
+  let osc = null, gain = null;
+  let playing = false;
 
-  // frekvence (interně float, UI až round)
+  // frekvence (interně float)
   let freqExact = 440;
-  let freq = 440;
 
   // knob
   let knobActive=false;
   let lastAngle=0;
   let fingerAngle=-Math.PI/2;
 
+  // UI prvky
+  const controls = document.getElementById('controls');
+
+  const knob = document.getElementById('knob');
+  const svg  = knob.querySelector('svg');
+  const trail = document.getElementById('trail');
+  const thumb = document.getElementById('thumb');
+
+  const knobHz = document.getElementById('knobHz');
+  const knobCenterBtn = document.getElementById('knobCenterBtn');
+  const knobEdit = document.getElementById('knobEdit');
+  const knobInput = document.getElementById('knobInput');
+
   // ===== Canvas =====
   const pad = document.getElementById('pad');
   const ctx = pad.getContext('2d') || pad.getContext('2d', { alpha:false });
 
   function ensureCanvasSize(){
-    const cssW = pad.clientWidth || innerWidth;
-    const cssH = pad.clientHeight || Math.floor(innerHeight * 0.58);
+    if (!controls.open) return;
+    const cssW = pad.clientWidth || Math.floor(innerWidth);
+    const cssH = pad.clientHeight || Math.floor(innerHeight * 0.42);
     const ratio = Math.min(devicePixelRatio||1, 2);
     const w = Math.max(10, Math.floor(cssW*ratio));
     const h = Math.max(10, Math.floor(cssH*ratio));
@@ -217,19 +288,34 @@
       needRedraw = true;
     }
   }
+  controls.addEventListener('toggle', () => {
+    if (controls.open) {
+      setTimeout(() => { ensureCanvasSize(); requestDraw(); }, 0);
+      setTimeout(() => { ensureCanvasSize(); requestDraw(); }, 120);
+    }
+  });
 
-  function removeDC(){
-    let s=0; for(let i=0;i<table.length;i++) s+=table[i];
-    const m=s/table.length;
-    for(let i=0;i<table.length;i++) table[i]-=m;
+  // ===== Wave helpers =====
+  function removeDC_inplace(arr){
+    let s=0; for(let i=0;i<arr.length;i++) s+=arr[i];
+    const m=s/arr.length;
+    for(let i=0;i<arr.length;i++) arr[i]-=m;
   }
-  function normalize(){
-    let m=0; for(let i=0;i<table.length;i++) m=Math.max(m,Math.abs(table[i]));
+  function normalize_inplace(arr){
+    let m=0; for(let i=0;i<arr.length;i++) m=Math.max(m,Math.abs(arr[i]));
     if(m>1e-9){
       const k=1/m;
-      for(let i=0;i<table.length;i++) table[i]*=k;
+      for(let i=0;i<arr.length;i++) arr[i]*=k;
     }
   }
+
+  function rebuildLastWaveTable(){
+    const tmp = new Float32Array(table);
+    removeDC_inplace(tmp);
+    normalize_inplace(tmp);
+    lastWaveTable = tmp;
+  }
+
   function setPreset(name){
     for(let i=0;i<TABLE_SIZE;i++){
       const t=i/TABLE_SIZE;
@@ -238,16 +324,17 @@
       else if(name==='saw') table[i]=2*(t - Math.floor(t+0.5));
       else if(name==='triangle') table[i]=1 - 4*Math.abs(Math.round(t-0.25)-(t-0.25));
     }
-    removeDC();
+    rebuildLastWaveTable();
     requestDraw();
-    sendTableToAudio();
-    document.querySelectorAll('#presets .chip').forEach(c=>c.classList.remove('active'));
+    sendTableToAudio(); // ✅ teď funguje i za běhu
+    document.querySelectorAll('#presets .chip[data-preset]').forEach(c=>c.classList.remove('active'));
     document.querySelector(`#presets .chip[data-preset="${name}"]`)?.classList.add('active');
   }
   setPreset('sine');
 
-  // ===== Kreslení =====
+  // ===== Drawing =====
   let drawing=false, lastX=0;
+
   function xyToIdxVal(x,y){
     const rect = pad.getBoundingClientRect();
     const rx = (x - rect.left) / rect.width;
@@ -261,7 +348,7 @@
     else if(tool==='erase') table[i]=table[i]*(1-DRAW_SMOOTH);
   }
   function pointerDown(ev){
-    if(!tool) return;
+    if(!tool || !controls.open) return;
     drawing=true;
     const p = ev.touches ? ev.touches[0] : ev;
     const {idx,val} = xyToIdxVal(p.clientX,p.clientY);
@@ -285,7 +372,8 @@
   function pointerUp(){
     if(!drawing) return;
     drawing=false;
-    sendTableToAudio();
+    rebuildLastWaveTable();
+    sendTableToAudio(); // ✅ teď se propíše i do fallback oscilátoru
   }
   pad.addEventListener('touchstart', e=>{ e.preventDefault(); pointerDown(e); }, {passive:false});
   pad.addEventListener('touchmove',  e=>{ e.preventDefault(); pointerMove(e); }, {passive:false});
@@ -295,10 +383,12 @@
   addEventListener('mouseup', pointerUp);
 
   function requestDraw(){ needRedraw=true; }
-
   function drawNow(){
     if(!needRedraw) return;
+    if(!controls.open) return;
     ensureCanvasSize();
+    if(!controls.open) return;
+
     needRedraw=false;
 
     const w=pad.width, h=pad.height;
@@ -341,26 +431,47 @@
     ctx.restore();
   }
   (function loop(){ drawNow(); requestAnimationFrame(loop); })();
-  addEventListener('resize', ()=>{ ensureCanvasSize(); requestDraw(); });
+  addEventListener('resize', ()=>{ if(controls.open){ ensureCanvasSize(); requestDraw(); } });
 
-  // ===== Toolbar =====
+  // ===== Toggle kreslení =====
   const btnDraw=document.getElementById('btnDraw');
   const btnErase=document.getElementById('btnErase');
   function setTool(t){
-    tool=t;
+    tool = t;
     btnDraw.classList.toggle('active', tool==='draw');
     btnErase.classList.toggle('active', tool==='erase');
     btnDraw.setAttribute('aria-pressed', tool==='draw'?'true':'false');
     btnErase.setAttribute('aria-pressed', tool==='erase'?'true':'false');
     requestDraw();
   }
-  btnDraw.onclick=()=>setTool('draw');
-  btnErase.onclick=()=>setTool('erase');
+  btnDraw.onclick = ()=> setTool(tool==='draw' ? null : 'draw');
+  btnErase.onclick= ()=> setTool(tool==='erase'? null : 'erase');
 
-  document.getElementById('btnClear').onclick=()=>{ table.fill(0); requestDraw(); sendTableToAudio(); };
-  document.getElementById('btnNormalize').onclick=()=>{ normalize(); requestDraw(); sendTableToAudio(); };
-  document.getElementById('btnCenter').onclick=()=>{ removeDC(); requestDraw(); sendTableToAudio(); };
-  document.getElementById('btnInvert').onclick=()=>{ for(let i=0;i<table.length;i++) table[i]=-table[i]; requestDraw(); sendTableToAudio(); };
+  document.getElementById('btnClear').onclick=()=>{
+    table.fill(0);
+    rebuildLastWaveTable();
+    requestDraw();
+    sendTableToAudio();
+  };
+  document.getElementById('btnNormalize').onclick=()=>{
+    // normalizace na hlavní tabulce (užitečné i pro kreslení)
+    normalize_inplace(table);
+    rebuildLastWaveTable();
+    requestDraw();
+    sendTableToAudio();
+  };
+  document.getElementById('btnCenter').onclick=()=>{
+    removeDC_inplace(table);
+    rebuildLastWaveTable();
+    requestDraw();
+    sendTableToAudio();
+  };
+  document.getElementById('btnInvert').onclick=()=>{
+    for(let i=0;i<table.length;i++) table[i] = -table[i];
+    rebuildLastWaveTable();
+    requestDraw();
+    sendTableToAudio();
+  };
 
   document.getElementById('presets').addEventListener('click',(e)=>{
     const el=e.target.closest('.chip[data-preset]');
@@ -368,49 +479,53 @@
     setPreset(el.dataset.preset);
   });
   document.getElementById('btnHalfRect').onclick=()=>{
-    for(let i=0;i<table.length;i++) table[i]=Math.max(0,table[i])*2 - 1;
-    removeDC(); normalize(); requestDraw(); sendTableToAudio();
+    for(let i=0;i<table.length;i++) table[i] = Math.max(0, table[i]) * 2 - 1;
+    rebuildLastWaveTable();
+    requestDraw();
+    sendTableToAudio();
   };
 
-  // ===== Frequency input (clamp až po dopsání) =====
-  const elF=document.getElementById('freq');
-  const knobCenter=document.getElementById('knobCenter');
-
+  // ===== Frekvence =====
   function clampFreqExact(f){
     if(!Number.isFinite(f)) f=freqExact;
     return Math.max(F_MIN, Math.min(F_MAX, f));
   }
-  function syncUIFromExact(){
-    freqExact = clampFreqExact(freqExact);
-    freq = Math.round(freqExact);
-    knobCenter.textContent = freq + ' Hz';
-    if(document.activeElement !== elF) elF.value = String(freq);
+  function setFreqExact(f){
+    freqExact = clampFreqExact(f);
+    const fUi = Math.round(freqExact);
+    knobHz.textContent = String(fUi);
+    knobInput.value = String(fUi);
     setFrequencyParam(freqExact);
   }
-  function commitFreqFromField(){
-    const raw=(elF.value||'').trim();
-    if(!raw){ elF.value=String(freq); syncUIFromExact(); return; }
-    const num=parseInt(raw.replace(/[^\d]/g,''),10);
-    if(!Number.isFinite(num)){ elF.value=String(freq); syncUIFromExact(); return; }
-    freqExact = clampFreqExact(num);
-    syncUIFromExact();
+
+  // ===== Inline edit =====
+  function openEdit(){
+    knobEdit.classList.add('show');
+    knobEdit.setAttribute('aria-hidden','false');
+    knobInput.value = String(Math.round(freqExact));
+    knobInput.focus({preventScroll:true});
+    knobInput.select();
   }
-  elF.addEventListener('focus', ()=> elF.select());
-  elF.addEventListener('input', ()=>{
-    const t=(elF.value||'').replace(/[^\d]/g,'');
-    knobCenter.textContent = (t? t : String(freq)) + ' Hz';
+  function closeEdit(commit){
+    if(commit){
+      const raw=(knobInput.value||'').trim();
+      const num=parseInt(raw.replace(/[^\d]/g,''),10);
+      if(Number.isFinite(num)) setFreqExact(num);
+      else setFreqExact(freqExact);
+    }
+    knobEdit.classList.remove('show');
+    knobEdit.setAttribute('aria-hidden','true');
+    knobInput.blur();
+  }
+  knobCenterBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEdit(); });
+  knobEdit.addEventListener('click', (e)=>{ if(e.target === knobEdit) closeEdit(true); });
+  knobInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); closeEdit(true); }
+    if(e.key === 'Escape'){ e.preventDefault(); closeEdit(false); }
   });
-  elF.addEventListener('blur', commitFreqFromField);
-  elF.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){ e.preventDefault(); commitFreqFromField(); elF.blur(); }
-  });
+  knobInput.addEventListener('blur', ()=> closeEdit(true));
 
-  // ===== Knob rendering =====
-  const knob=document.getElementById('knob');
-  const svg = knob.querySelector('svg');
-  const trail = document.getElementById('trail');
-  const thumb = document.getElementById('thumb');
-
+  // ===== Knob =====
   function angleDelta(a, b){
     let d = a - b;
     while(d > Math.PI) d -= 2*Math.PI;
@@ -436,55 +551,46 @@
   }
   function renderTrail(currentAngle){
     while(trail.firstChild) trail.removeChild(trail.firstChild);
-
     const a0 = currentAngle - TRAIL_ANGLE;
     const a1 = currentAngle;
-
     for(let i=0;i<TRAIL_DOTS;i++){
       const t = i/(TRAIL_DOTS-1);
       const a = a0 + (a1-a0)*t;
       const p = pointOnCircle(a, R);
-
       const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
       c.setAttribute('cx', p.x.toFixed(3));
       c.setAttribute('cy', p.y.toFixed(3));
       c.setAttribute('r', (2.2 + 1.4*t).toFixed(2));
-
       const op = 0.08 + 0.82*t;
       c.setAttribute('fill', `rgba(96,165,250,${op.toFixed(3)})`);
       trail.appendChild(c);
     }
-
     const pt = pointOnCircle(currentAngle, R);
     thumb.setAttribute('cx', pt.x.toFixed(3));
     thumb.setAttribute('cy', pt.y.toFixed(3));
   }
 
   function applyAngleDeltaToFreq(d){
-    // Blend: dole přičítáme, výš násobíme
-    const w = Math.max(0, Math.min(1, freqExact / LOW_BLEND_HZ)); // 0..1
-    const wMul = w*w;                 // rychleji přejde na násobení
+    if(knobEdit.classList.contains('show')) return;
+
+    const w = Math.max(0, Math.min(1, freqExact / LOW_BLEND_HZ));
+    const wMul = w*w;
     const wAdd = 1 - wMul;
 
-    // add část (jemná dole)
     const add = d * LOW_ADD_PER_RAD;
 
-    // mul část (nekonečné multi-turn)
     const k = Math.log(ONE_TURN_MULT) / (2*Math.PI);
     const mult = Math.exp(k * d);
     const mulDelta = freqExact * (mult - 1);
 
-    freqExact = clampFreqExact(freqExact + wAdd*add + wMul*mulDelta);
-    syncUIFromExact();
+    setFreqExact(freqExact + wAdd*add + wMul*mulDelta);
   }
 
-  // init vizuál
-  renderTrail(fingerAngle);
-  freqExact = clampFreqExact(parseFloat(elF.value));
-  syncUIFromExact();
-
   knob.addEventListener('pointerdown', (e)=>{
+    const path = e.composedPath?.() || [];
+    if(path.includes(knobCenterBtn) || path.includes(knobInput)) return;
     if(!hitRing(e.clientX, e.clientY)) return;
+
     knob.setPointerCapture(e.pointerId);
     knobActive = true;
 
@@ -493,20 +599,16 @@
     fingerAngle = a;
     renderTrail(fingerAngle);
 
-    if(document.activeElement === elF) elF.blur();
+    if(knobEdit.classList.contains('show')) closeEdit(true);
     e.preventDefault();
   });
 
   knob.addEventListener('pointermove', (e)=>{
     if(!knobActive) return;
-
     const a = angleFromClient(e.clientX, e.clientY);
-
-    // grafika pod prstem
     fingerAngle = a;
     renderTrail(fingerAngle);
 
-    // logika nekonečná
     const d = angleDelta(a, lastAngle);
     lastAngle = a;
     if(Math.abs(d) > 1e-7) applyAngleDeltaToFreq(d);
@@ -519,11 +621,17 @@
   knob.addEventListener('pointercancel', endKnob);
   knob.addEventListener('lostpointercapture', endKnob);
 
+  // init
+  renderTrail(fingerAngle);
+  rebuildLastWaveTable();
+  setFreqExact(440);
+
   // ===== Audio =====
   async function ensureAudio(){
     if(ctxAudio) return;
     ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
 
+    // zkus Worklet
     try{
       const code = `
 class WavePlayer extends AudioWorkletProcessor{
@@ -570,13 +678,25 @@ registerProcessor('wave-player', WavePlayer);
       });
       node.connect(ctxAudio.destination);
       usingWorklet = true;
-      sendTableToAudio();
-    }catch(err){
+
+      sendTableToAudio(); // ✅ po vytvoření hned pošle aktuální vlnu
+      return;
+    }catch(_){
       usingWorklet = false;
-      gain = ctxAudio.createGain();
-      gain.connect(ctxAudio.destination);
-      makeOrUpdateOscillator();
     }
+
+    // fallback: Oscillator + PeriodicWave
+    gain = ctxAudio.createGain();
+    gain.gain.value = 0.35;
+    gain.connect(ctxAudio.destination);
+
+    osc = ctxAudio.createOscillator();
+    osc.frequency.value = freqExact;
+    osc.connect(gain);
+    osc.start();
+
+    // nastav poslední vlnu (PeriodicWave)
+    sendTableToAudio();
   }
 
   function setFrequencyParam(f){
@@ -589,72 +709,74 @@ registerProcessor('wave-player', WavePlayer);
     }
   }
 
+  function buildPeriodicWaveFromTable(tmp){
+    // Fourier aproximace (prvních 64 harmonických)
+    const N = tmp.length, K = 64;
+    const real = new Float32Array(K+1);
+    const imag = new Float32Array(K+1);
+
+    for(let k=1;k<=K;k++){
+      let a=0,b=0;
+      for(let n=0;n<N;n++){
+        const ph = 2*Math.PI*k*n/N;
+        a += tmp[n]*Math.cos(ph);
+        b += tmp[n]*Math.sin(ph);
+      }
+      real[k] = (2/N)*a;
+      imag[k] = (2/N)*(-b);
+    }
+    return ctxAudio.createPeriodicWave(real, imag, {disableNormalization:false});
+  }
+
   function sendTableToAudio(){
+    if(!lastWaveTable) rebuildLastWaveTable();
+    const tmp = lastWaveTable;
     if(!ctxAudio) return;
 
-    const tmp = new Float32Array(table.length);
-    let s=0;
-    for(let i=0;i<table.length;i++) s+=table[i];
-    const m=s/table.length;
-
-    let mx=0;
-    for(let i=0;i<table.length;i++){
-      tmp[i]=table[i]-m;
-      mx=Math.max(mx,Math.abs(tmp[i]));
-    }
-    const k=mx>1?1/mx:1;
-    for(let i=0;i<table.length;i++) tmp[i]*=k;
-
-    if(usingWorklet){
+    if(usingWorklet && node){
       node.port.postMessage({type:'setTable', table: tmp});
-    }else{
-      makeOrUpdateOscillator(tmp);
+      return;
     }
-  }
 
-  function makeOrUpdateOscillator(waveTable){
-    if(osc){
-      try{osc.stop();}catch{}
-      osc.disconnect();
-      osc=null;
-    }
-    osc = ctxAudio.createOscillator();
-    osc.frequency.value = freqExact;
-
-    if(waveTable){
-      const N = waveTable.length, K = 64;
-      const real = new Float32Array(K+1);
-      const imag = new Float32Array(K+1);
-
-      for(let k=1;k<=K;k++){
-        let a=0,b=0;
-        for(let n=0;n<N;n++){
-          const ph=2*Math.PI*k*n/N;
-          a += waveTable[n]*Math.cos(ph);
-          b += waveTable[n]*Math.sin(ph);
-        }
-        real[k] = (2/N)*a;
-        imag[k] = (2/N)*(-b);
+    // fallback
+    if(osc && ctxAudio){
+      try{
+        const pw = buildPeriodicWaveFromTable(tmp);
+        osc.setPeriodicWave(pw);
+      }catch(_){
+        // pokud by PeriodicWave selhalo, nic – aspoň to hraje
       }
-      const pw = ctxAudio.createPeriodicWave(real, imag, {disableNormalization:false});
-      osc.setPeriodicWave(pw);
-    } else {
-      osc.type = 'sine';
     }
-
-    osc.connect(gain);
-    osc.start();
   }
 
-  document.getElementById('btnPlay').onclick = async ()=>{
-    await ensureAudio();
-    if(ctxAudio.state!=='running') await ctxAudio.resume();
-    setFrequencyParam(freqExact);
-  };
-  document.getElementById('btnStop').onclick = async ()=>{
-    if(ctxAudio) await ctxAudio.suspend();
-  };
+  // ===== ONE Play/Stop =====
+  const btnPlayStop = document.getElementById('btnPlayStop');
 
+  function setPlayUI(isPlaying){
+    playing = isPlaying;
+    if(playing){
+      btnPlayStop.classList.remove('ok');
+      btnPlayStop.classList.add('danger');
+      btnPlayStop.textContent = '⏹️ Stop';
+    }else{
+      btnPlayStop.classList.remove('danger');
+      btnPlayStop.classList.add('ok');
+      btnPlayStop.textContent = '▶️ Přehrát';
+    }
+  }
+
+  btnPlayStop.onclick = async ()=>{
+    if(!playing){
+      await ensureAudio();
+      if(ctxAudio.state!=='running') await ctxAudio.resume();
+      setFrequencyParam(freqExact);
+      sendTableToAudio(); // ✅ jistota: při startu vždy nastav aktuální vlnu
+      setPlayUI(true);
+    }else{
+      if(ctxAudio) await ctxAudio.suspend();
+      setPlayUI(false);
+    }
+  };
 })();
 </script>
 </body>
