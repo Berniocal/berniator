@@ -1,15 +1,13 @@
 /* Berniátor SW – jednoduché precache + offline fallbacks */
-const VERSION = 'v8.0';
+const VERSION = 'v9.0';
 const CORE = [
   './',
   './index.html',
   './manifest.webmanifest',
   './service-worker.js',
   './offline.html',
-  './assets/icons/icon-192.svg',
-  './assets/icons/icon-512.svg',
-  './assets/icons/maskable-192.svg',
-  './assets/icons/maskable-512.svg',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
   './assets/icons/apple-touch-180.png'
 ];
 
