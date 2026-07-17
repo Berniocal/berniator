@@ -1,5 +1,5 @@
 /* Berniátor SW – offline + vložení Android Media Session ovládání */
-const VERSION = 'v13-media-session';
+const VERSION = 'v14-media-session-fix';
 const CACHE_NAME = 'berniator-core-' + VERSION;
 const CORE = [
   './',
@@ -40,7 +40,7 @@ async function withMediaSessionScript(response) {
 
   let html = await response.text();
   if (!html.includes('media-session.js')) {
-    const script = '<script src="./media-session.js?v=13"></script>';
+    const script = '<script src="./media-session.js?v=14"></script>';
     html = html.includes('</body>')
       ? html.replace('</body>', script + '\n</body>')
       : html + script;
@@ -65,7 +65,6 @@ self.addEventListener('fetch', (e) => {
         const preload = await e.preloadResponse;
         const fresh = preload || await fetch(req);
 
-        // Uložíme původní HTML pro příští offline spuštění.
         const cache = await caches.open(CACHE_NAME);
         try { await cache.put('./index.html', fresh.clone()); } catch {}
 
@@ -83,6 +82,18 @@ self.addEventListener('fetch', (e) => {
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
+
+    // Skript mediálního mostu vždy zkus načíst ze sítě, aby se opravy nezasekly ve staré cache.
+    if (new URL(req.url).pathname.endsWith('/media-session.js')) {
+      try {
+        const fresh = await fetch(req, { cache: 'no-store' });
+        if (fresh.ok) {
+          try { await cache.put(req, fresh.clone()); } catch {}
+          return fresh;
+        }
+      } catch {}
+    }
+
     const cached = await cache.match(req);
     if (cached) return cached;
 
