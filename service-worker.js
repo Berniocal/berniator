@@ -1,5 +1,5 @@
 /* Berniátor SW – offline režim + spolehlivé načtení Media Session */
-const VERSION = 'v15-media-session-direct';
+const VERSION = 'v16-media-session-direct';
 const CACHE_NAME = 'berniator-core-' + VERSION;
 const CORE = [
   './',
