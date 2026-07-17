@@ -1,142 +1,160 @@
 /* Berniátor – Android Media Session bridge
-   Propojí Web Audio generátor se systémovým přehrávačem Androidu.
+   Web Audio samo o sobě na Androidu často nevytvoří systémovou mediální lištu.
+   Skrytý HTMLAudioElement proto drží aktivní Media Session; skutečný tón dál
+   vytváří Berniátor přes AudioContext.
 */
 (() => {
   'use strict';
 
-  if (!('mediaSession' in navigator)) return;
+  if (!("mediaSession" in navigator) || !("MediaMetadata" in window)) return;
 
   const playButton = document.getElementById('btnPlayStop');
   const frequencyEl = document.getElementById('knobHz');
   if (!playButton || !frequencyEl) return;
 
-  let bridgeAudio = null;
-  let bridgeUrl = null;
-  let bridgeWanted = false;
+  const icon = new URL('./assets/icons/icon-512.png', document.baseURI).href;
+
+  function createQuietWavUrl(){
+    const sampleRate = 8000;
+    const seconds = 60;
+    const samples = sampleRate * seconds;
+    const bytesPerSample = 2;
+    const dataSize = samples * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    const writeText = (offset, text) => {
+      for(let i=0;i<text.length;i++) view.setUint8(offset+i, text.charCodeAt(i));
+    };
+
+    writeText(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeText(8, 'WAVE');
+    writeText(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * bytesPerSample, true);
+    view.setUint16(32, bytesPerSample, true);
+    view.setUint16(34, 16, true);
+    writeText(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // Prakticky neslyšitelný 35Hz signál. Digitálně úplné ticho může Android ignorovat.
+    for(let i=0;i<samples;i++){
+      const value = Math.round(Math.sin(2*Math.PI*35*i/sampleRate) * 2);
+      view.setInt16(44 + i*2, value, true);
+    }
+
+    return URL.createObjectURL(new Blob([buffer], {type:'audio/wav'}));
+  }
+
+  const mediaBridge = document.createElement('audio');
+  mediaBridge.id = 'androidMediaBridge';
+  mediaBridge.src = createQuietWavUrl();
+  mediaBridge.loop = true;
+  mediaBridge.preload = 'auto';
+  mediaBridge.volume = 1;
+  mediaBridge.setAttribute('playsinline', '');
+  mediaBridge.style.position = 'fixed';
+  mediaBridge.style.width = '1px';
+  mediaBridge.style.height = '1px';
+  mediaBridge.style.opacity = '0.001';
+  mediaBridge.style.pointerEvents = 'none';
+  mediaBridge.style.left = '-10px';
+  document.body.appendChild(mediaBridge);
 
   function currentFrequencyLabel(){
     const value = Math.round(Number(frequencyEl.textContent) || 440);
     return `${value} Hz`;
   }
 
-  function isGeneratorPlaying(){
+  function appIsPlaying(){
     return playButton.classList.contains('danger') || /stop/i.test(playButton.textContent || '');
   }
 
-  function makeSilentWavUrl(seconds = 60, sampleRate = 8000){
-    const samples = Math.max(1, Math.floor(seconds * sampleRate));
-    const bytesPerSample = 2;
-    const dataSize = samples * bytesPerSample;
-    const buffer = new ArrayBuffer(44 + dataSize);
-    const view = new DataView(buffer);
-    let offset = 0;
-
-    const writeText = (text) => {
-      for (let i = 0; i < text.length; i++) view.setUint8(offset++, text.charCodeAt(i));
-    };
-    const write16 = (value) => { view.setUint16(offset, value, true); offset += 2; };
-    const write32 = (value) => { view.setUint32(offset, value, true); offset += 4; };
-
-    writeText('RIFF'); write32(36 + dataSize); writeText('WAVE');
-    writeText('fmt '); write32(16); write16(1); write16(1);
-    write32(sampleRate); write32(sampleRate * bytesPerSample);
-    write16(bytesPerSample); write16(16);
-    writeText('data'); write32(dataSize);
-
-    // Prakticky neslyšitelný signál; čisté mute někdy nevytvoří Android media session.
-    for (let i = 0; i < samples; i++) {
-      const sample = (i % 4000 === 0) ? 1 : 0;
-      view.setInt16(offset, sample, true);
-      offset += 2;
-    }
-
-    return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
-  }
-
-  function ensureBridge(){
-    if (bridgeAudio) return bridgeAudio;
-    bridgeUrl = makeSilentWavUrl();
-    bridgeAudio = document.createElement('audio');
-    bridgeAudio.src = bridgeUrl;
-    bridgeAudio.loop = true;
-    bridgeAudio.preload = 'auto';
-    bridgeAudio.volume = 1;
-    bridgeAudio.setAttribute('playsinline', '');
-    bridgeAudio.style.display = 'none';
-    document.body.appendChild(bridgeAudio);
-    return bridgeAudio;
-  }
-
   function updateMetadata(){
-    try {
+    try{
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentFrequencyLabel(),
         artist: 'Berniátor',
         album: 'Generátor frekvence',
-        artwork: [
-          { src: './assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: './assets/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-        ]
+        artwork: [{src:icon, sizes:'512x512', type:'image/png'}]
       });
-    } catch (_) {}
+    }catch(_){}
+  }
+
+  function setPlaybackState(state){
+    try{ navigator.mediaSession.playbackState = state; }catch(_){}
   }
 
   async function startBridge(){
-    bridgeWanted = true;
     updateMetadata();
-    const audio = ensureBridge();
-    try {
-      await audio.play();
-      navigator.mediaSession.playbackState = 'playing';
-    } catch (_) {
-      // Android dovolí play až po uživatelském kliknutí; další synchronizace to zkusí znovu.
+    try{
+      await mediaBridge.play();
+      setPlaybackState('playing');
+    }catch(err){
+      console.warn('Systémové mediální ovládání se nepodařilo aktivovat:', err);
     }
   }
 
   function stopBridge(){
-    bridgeWanted = false;
-    if (bridgeAudio) {
-      try { bridgeAudio.pause(); } catch (_) {}
-      try { bridgeAudio.currentTime = 0; } catch (_) {}
-    }
-    try { navigator.mediaSession.playbackState = 'paused'; } catch (_) {}
+    try{ mediaBridge.pause(); }catch(_){}
+    try{ mediaBridge.currentTime = 0; }catch(_){}
+    setPlaybackState('paused');
   }
 
   async function requestPlay(){
-    if (!isGeneratorPlaying()) playButton.click();
-    // UI a AudioContext se mění asynchronně.
-    setTimeout(() => { if (isGeneratorPlaying()) startBridge(); }, 80);
+    await startBridge();
+    if(!appIsPlaying()) playButton.click();
   }
 
   function requestPause(){
-    if (isGeneratorPlaying()) playButton.click();
     stopBridge();
+    if(appIsPlaying()) playButton.click();
   }
 
-  try { navigator.mediaSession.setActionHandler('play', requestPlay); } catch (_) {}
-  try { navigator.mediaSession.setActionHandler('pause', requestPause); } catch (_) {}
-  try { navigator.mediaSession.setActionHandler('stop', requestPause); } catch (_) {}
+  // Capture fáze je zásadní: bridge.play() proběhne přímo uvnitř uživatelského kliknutí,
+  // ještě před asynchronním spuštěním AudioContextu v původním obslužném kódu.
+  playButton.addEventListener('click', () => {
+    if(!appIsPlaying()) startBridge();
+    else stopBridge();
+  }, true);
 
-  function syncFromGenerator(){
+  try{ navigator.mediaSession.setActionHandler('play', requestPlay); }catch(_){}
+  try{ navigator.mediaSession.setActionHandler('pause', requestPause); }catch(_){}
+  try{ navigator.mediaSession.setActionHandler('stop', requestPause); }catch(_){}
+  try{ navigator.mediaSession.setActionHandler('seekbackward', null); }catch(_){}
+  try{ navigator.mediaSession.setActionHandler('seekforward', null); }catch(_){}
+  try{ navigator.mediaSession.setActionHandler('previoustrack', null); }catch(_){}
+  try{ navigator.mediaSession.setActionHandler('nexttrack', null); }catch(_){}
+
+  new MutationObserver(() => {
     updateMetadata();
-    if (isGeneratorPlaying()) {
-      startBridge();
-    } else {
+  }).observe(frequencyEl, {childList:true, characterData:true, subtree:true});
+
+  new MutationObserver(() => {
+    updateMetadata();
+    if(appIsPlaying()){
+      if(mediaBridge.paused) startBridge();
+      else setPlaybackState('playing');
+    }else{
       stopBridge();
     }
-  }
+  }).observe(playButton, {
+    childList:true,
+    characterData:true,
+    subtree:true,
+    attributes:true,
+    attributeFilter:['class']
+  });
 
-  playButton.addEventListener('click', () => setTimeout(syncFromGenerator, 100));
-
-  new MutationObserver(() => {
-    updateMetadata();
-  }).observe(frequencyEl, { childList: true, characterData: true, subtree: true });
-
-  new MutationObserver(() => {
-    const playing = isGeneratorPlaying();
-    if (playing && !bridgeWanted) startBridge();
-    if (!playing && bridgeWanted) stopBridge();
-  }).observe(playButton, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  mediaBridge.addEventListener('play', () => setPlaybackState('playing'));
+  mediaBridge.addEventListener('pause', () => {
+    if(!appIsPlaying()) setPlaybackState('paused');
+  });
 
   updateMetadata();
+  setPlaybackState('none');
 })();
