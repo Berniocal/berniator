@@ -1,21 +1,30 @@
-/* Berniátor SW – offline režim + spolehlivé načtení Media Session */
-const VERSION = 'v16-media-session-direct';
+/* Berniátor SW – robustní offline režim + Media Session */
+const VERSION = 'v17-media-session-robust';
 const CACHE_NAME = 'berniator-core-' + VERSION;
-const CORE = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './media-session.js?v=15',
-  './offline.html',
-  './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png',
-  './assets/icons/apple-touch-180.png'
-];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(CORE))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const urls = [
+      './',
+      './index.html',
+      './manifest.webmanifest',
+      './media-session.js?v=17',
+      './offline.html',
+      './assets/icons/icon-192.png',
+      './assets/icons/icon-512.png',
+      './assets/icons/apple-touch-180.png'
+    ];
+
+    // Jeden chybějící soubor už nezruší instalaci celého service workeru.
+    await Promise.allSettled(urls.map(async url => {
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (response.ok) await cache.put(url, response);
+      } catch (_) {}
+    }));
+  })());
+
   self.skipWaiting();
 });
 
@@ -31,17 +40,16 @@ self.addEventListener('activate', event => {
   })());
 });
 
-async function addMediaSessionScript(response) {
+async function injectMediaSession(response) {
   if (!response || !response.ok) return response;
+
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('text/html')) return response;
 
   let html = await response.text();
+  const tag = '<script src="./media-session.js?v=17"></script>';
 
-  // Stejně jako v aplikaci Šumy musí být skript běžnou součástí stránky
-  // a načíst se až po hlavním skriptu aplikace.
-  if (!html.includes('media-session.js?v=15')) {
-    const tag = '<script src="./media-session.js?v=15"></script>';
+  if (!html.includes('media-session.js?v=17')) {
     html = html.includes('</body>')
       ? html.replace('</body>', `${tag}\n</body>`)
       : `${html}\n${tag}`;
@@ -49,6 +57,7 @@ async function addMediaSessionScript(response) {
 
   const headers = new Headers(response.headers);
   headers.delete('content-length');
+  headers.delete('content-encoding');
   headers.set('cache-control', 'no-store');
 
   return new Response(html, {
@@ -67,16 +76,15 @@ self.addEventListener('fetch', event => {
       const cache = await caches.open(CACHE_NAME);
 
       try {
-        // Navigace je network-first, aby se starý index nezasekl v cache.
-        const networkResponse = await fetch(request, { cache: 'no-store' });
-        if (networkResponse && networkResponse.ok) {
-          try { await cache.put('./index.html', networkResponse.clone()); } catch (_) {}
-          return addMediaSessionScript(networkResponse);
+        const fresh = await fetch(request, { cache: 'no-store' });
+        if (fresh.ok) {
+          try { await cache.put('./index.html', fresh.clone()); } catch (_) {}
+          return injectMediaSession(fresh);
         }
       } catch (_) {}
 
-      const cachedIndex = await cache.match('./index.html');
-      if (cachedIndex) return addMediaSessionScript(cachedIndex);
+      const cached = await cache.match('./index.html');
+      if (cached) return injectMediaSession(cached);
 
       const offline = await cache.match('./offline.html');
       return offline || new Response('Offline', { status: 503 });
@@ -86,13 +94,12 @@ self.addEventListener('fetch', event => {
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
+    const url = new URL(request.url);
 
-    // Media Session skript vždy zkusíme vzít čerstvý, aby se neopakovala
-    // stará nefunkční verze.
-    if (new URL(request.url).pathname.endsWith('/media-session.js')) {
+    if (url.pathname.endsWith('/media-session.js')) {
       try {
         const fresh = await fetch(request, { cache: 'no-store' });
-        if (fresh && fresh.ok) {
+        if (fresh.ok) {
           try { await cache.put(request, fresh.clone()); } catch (_) {}
           return fresh;
         }
@@ -103,11 +110,11 @@ self.addEventListener('fetch', event => {
     if (cached) return cached;
 
     try {
-      const response = await fetch(request);
-      if (response && response.ok && request.url.startsWith(self.location.origin)) {
-        try { await cache.put(request, response.clone()); } catch (_) {}
+      const fresh = await fetch(request);
+      if (fresh.ok && request.url.startsWith(self.location.origin)) {
+        try { await cache.put(request, fresh.clone()); } catch (_) {}
       }
-      return response;
+      return fresh;
     } catch (_) {
       return new Response('', { status: 404 });
     }
